@@ -1,7 +1,8 @@
 defmodule Yahtzee do
   @sides 6
   @num_dice 5
-
+  
+  # todo: just define a score struct in it's own module?
   defstruct score: [ones: :open, twos: :open, threes: :open, fours: :open, fives: :open, sixes: :open,
                     three_of_kind: :open, four_of_kind: :open, full_house: :open,
                     small_straight: :open, large_straight: :open, yahtzee: :open,
@@ -22,6 +23,8 @@ defmodule Yahtzee do
     yahtzee: &score_yahtzee/1,
     chance: &score_chance/1
   ]
+
+  def valid_score_categories, do: Keyword.keys(score_functions)
 
   def max_scores do
     # todo:: get rid of everything but full_house, straights, and yahtzee... 
@@ -79,12 +82,14 @@ defmodule Yahtzee do
     category = IO.gets "Pick a scoring category to play: "
     category = String.strip(category) |> String.to_atom
 
-    if !Keyword.has_key?(game_score, category) do
+    #if !Keyword.has_key?(game_score, category) do
+    if !(category in valid_score_categories) do
       IO.puts "Invalid category: #{category}"
       pick_score(hand_score, game)
     else
       if Keyword.get(game_score, category) == :open do
         new_score = Keyword.get(hand_score, category)
+        # note: use Keyword.update to keep ordering, instead of Keyword.put
         updated_game_score = Keyword.put(game_score, category, new_score) |> score_upper_bonus
         %{game | score: updated_game_score}
       else
@@ -93,13 +98,13 @@ defmodule Yahtzee do
       end
     end
   end
-  
+
   def upper_score_categories, do: [:ones, :twos, :threes, :fours, :fives, :sixes]
   def score_upper_bonus(game_score) do
     upper_bonus = Keyword.take(game_score, upper_score_categories) |> sum_integer_values 
     case upper_bonus >= 63 do
-      true -> Keyword.put(game_score, :upper_bonus, 35)
-      _ -> game_score
+      true  -> Keyword.put(game_score, :upper_bonus, 35)
+      false -> game_score
     end
   end
 
