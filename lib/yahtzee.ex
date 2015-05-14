@@ -7,17 +7,17 @@ defmodule Yahtzee do
                     small_straight: nil, large_straight: nil, yahtzee: nil, bonus: 0] 
 
   def score_functions, do: [three_of_kind: &score_three_of_kind/1, four_of_kind: &score_four_of_kind/1,
-    small_straight: &score_small_straight/1, large_straight: &score_large_straight/1, yahtzee: &score_yahtzee/1]
+    full_house: &score_full_house/1, small_straight: &score_small_straight/1,
+    large_straight: &score_large_straight/1, yahtzee: &score_yahtzee/1]
 
-  def empty_dice, do: [0,0,0,0,0]
-  def all_dice_pos, do: [0,1,2,3,4]
+  def empty_dice, do: Stream.cycle([0]) |> Enum.take(@num_dice)
+  def all_dice_pos, do: 0 .. (@num_dice-1) |> Enum.to_list
 
   def roll(dice \\ empty_dice, which \\ all_dice_pos) do
     # if Enum.count(dice) != @num_dice, do: raise "Incorrect number of dice!"
-    Stream.iterate(0, &(&1+1)) 
-    |> Stream.zip(dice) 
+    Stream.with_index(dice) 
     |> Stream.map(
-      fn {pos, die} -> 
+      fn {die, pos} -> 
         if pos in which do
           :random.uniform(@sides)
         else
@@ -29,11 +29,16 @@ defmodule Yahtzee do
 
   def score(dice) do
     top = score_top(dice)
+    for {name, func} <- score_functions do
+      {name, func.(dice)}
+    end
     
   end
 
+  def score_top_n(dice, n), do: Enum.count(dice, &(&1 == n)) * n
+
   def score_top(dice) do
-    1 .. @sides |> Enum.map( fn x -> Enum.count(dice, &(&1 == x)) * x end )
+    1 .. @sides |> Enum.map( &(score_top_n(dice, &1)) )
   end
 
   def score_full_house(dice) do
@@ -46,13 +51,7 @@ defmodule Yahtzee do
 
   def score_three_of_kind(dice), do: score_n_of_kind(dice, 3)
   def score_four_of_kind(dice), do: score_n_of_kind(dice, 4)
-  def score_yahtzee(dice)  do
-    if score_n_of_kind(dice, 5) != 0 do
-      50
-    else
-      0
-    end
-  end
+  def score_yahtzee(dice), do: (if score_n_of_kind(dice, 5) != 0, do: 50, else: 0)
   
   def score_n_of_kind(dice, n) do
     1 .. @sides |> Enum.reduce(0, 
