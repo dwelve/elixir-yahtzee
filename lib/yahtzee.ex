@@ -97,7 +97,10 @@ defmodule Yahtzee do
       if Keyword.get(game_score, category_key) == :open do
         new_score = Keyword.get(hand_score, category_key)
         # note: use Keyword.update to keep ordering, instead of Keyword.put
-        updated_game_score = Keyword.put(game_score, category_key, new_score) |> score_upper_bonus
+        #updated_game_score = Keyword.put(game_score, category_key, new_score) |> score_upper_bonus
+        updated_game_score = Keyword.update!(game_score, category_key, fn _ -> new_score end) |> score_upper_bonus
+        updated_game_score = Keyword.update!(updated_game_score, :yahtzee_bonus,
+                               fn s -> s + Keyword.fetch!(hand_score, :yahtzee_bonus) end)
         %{game | score: updated_game_score}
       else
         IO.puts("Category #{category} already played")
@@ -107,10 +110,12 @@ defmodule Yahtzee do
   end
 
   def upper_score_categories, do: [:ones, :twos, :threes, :fours, :fives, :sixes]
+  def upper_score_val_to_cat, do: 1..6 |> Enum.zip(Yahtzee.upper_score_categories) |> Enum.reduce(HashDict.new, fn {k,v}, dict -> Dict.put(dict, k, v) end)
+
   def score_upper_bonus(game_score) do
     upper_bonus = Keyword.take(game_score, upper_score_categories) |> sum_integer_values 
     case upper_bonus >= 63 do
-      true  -> Keyword.put(game_score, :upper_bonus, 35)
+      true  -> Keyword.update!(game_score, :upper_bonus, fn _ -> 35 end)
       false -> game_score
     end
   end
@@ -170,7 +175,34 @@ defmodule Yahtzee do
   def score(dice, game = %Yahtzee{}) do
     scores = score(dice)
     # insert special rules for yahtzee
-    scores
+    case Keyword.fetch!(scores, :yahtzee) do
+      # no yahtzee, proceed with score as is
+      0 -> scores
+
+      # Free choice Joker rule, can fill Full House, Small Straight, or Large Straight if Yahtzee
+      # or corresponding upper value has been played already.
+      # Also, give a bonus if Yahtzee has been played on the Yahtzee category already
+      _ -> game_score = Map.get(game, :score)
+           if Keyword.fetch!(game_score, :yahtzee) != 0 do
+             scores = Keyword.put(scores, :yahtzee_bonus, 100)
+             [ val | _ ] = dice
+             val_cat = Dict.fetch!(upper_score_val_to_cat, val)
+             if Keyword.fetch!(game_score, val_cat) != :open do
+               jokers = [:large_straight, :small_straight, :full_house]
+                        |> Enum.reduce([], fn cat, list -> [{cat, max_scores[cat]} | list] end)
+               scores = Keyword.merge(scores, jokers, fn (_k, _v1, v2) -> v2 end)  # update with joker score
+             end
+           end
+           scores
+           
+    end
+  end
+
+  def test do
+    y = %Yahtzee{}
+    s = Map.get(y, :score)
+    s2 = Keyword.update!(s, :yahtzee, fn _ -> 50 end)
+    y2 = %{y | score: s2}
   end
 
   def score_chance(dice), do: Enum.sum(dice)
