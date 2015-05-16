@@ -77,20 +77,27 @@ defmodule Yahtzee do
     Map.get(game, :score) |> Keyword.values |> Enum.any?(&(&1 == :open)) |> negate
   end
 
+  def score_cat_fn_map do
+    valid_score_categories
+    |> Enum.reduce(HashDict.new, fn cat, dict -> Dict.put(dict, to_string(cat), cat) end)
+  end
+  
   def pick_score(hand_score, game) do
     game_score = Map.get(game, :score)
     category = IO.gets "Pick a scoring category to play: "
-    category = String.strip(category) |> String.to_atom
+    #category = String.strip(category) |> String.to_existing_atom
+    category = String.strip(category)
 
+    category_key = Dict.get(score_cat_fn_map, category)
     #if !Keyword.has_key?(game_score, category) do
-    if !(category in valid_score_categories) do
+    if !(category_key) do
       IO.puts "Invalid category: #{category}"
       pick_score(hand_score, game)
     else
-      if Keyword.get(game_score, category) == :open do
-        new_score = Keyword.get(hand_score, category)
+      if Keyword.get(game_score, category_key) == :open do
+        new_score = Keyword.get(hand_score, category_key)
         # note: use Keyword.update to keep ordering, instead of Keyword.put
-        updated_game_score = Keyword.put(game_score, category, new_score) |> score_upper_bonus
+        updated_game_score = Keyword.put(game_score, category_key, new_score) |> score_upper_bonus
         %{game | score: updated_game_score}
       else
         IO.puts("Category #{category} already played")
