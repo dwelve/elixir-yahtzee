@@ -238,6 +238,7 @@ defmodule Yahtzee do
   def small_straights, do: [[1,2,3,4],[2,3,4,5],[3,4,5,6]]
   def large_straights, do: [[1,2,3,4,5], [2,3,4,5,6]] 
   def score_straight(dice, straights) do
+    # alternatively, sort unique items and compare against straights items
     checks = for ss <- straights do
       Enum.map(ss, &(&1 in dice)) |> Enum.all?
     end
