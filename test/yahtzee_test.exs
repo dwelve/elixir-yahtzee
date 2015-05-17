@@ -6,7 +6,7 @@ defmodule YahtzeeTest do
   end
 
   def assert_score_func(func) do
-    # is there a better way to curry functions?
+    # is there a better way to create partial functions?
     fn dice, expected -> assert_score(func, dice, expected) end
   end
 

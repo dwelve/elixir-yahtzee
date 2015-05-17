@@ -2,11 +2,10 @@ defmodule Yahtzee do
   @sides 6
   @num_dice 5
   
-  # todo: just define a score struct in it's own module?
-  defstruct score: [ones: :open, twos: :open, threes: :open, fours: :open, fives: :open, sixes: :open,
+  defstruct ones: :open, twos: :open, threes: :open, fours: :open, fives: :open, sixes: :open,
                     three_of_kind: :open, four_of_kind: :open, full_house: :open,
                     small_straight: :open, large_straight: :open, yahtzee: :open,
-                    chance: :open, upper_bonus: 0, yahtzee_bonus: 0]
+                    chance: :open, upper_bonus: 0, yahtzee_bonus: 0
 
   def score_functions, do: [
     ones: &(score_top_n(&1, 1)),
@@ -74,7 +73,7 @@ defmodule Yahtzee do
   def negate(x), do: !x
   def check_end_of_game(game = %Yahtzee{}) do
     # if nil is present as score value, that scoring option has not been played yet
-    game.score |> Keyword.values |> Enum.any?(&(&1 == :open)) |> negate
+    game |> Map.values |> Enum.any?(&(&1 == :open)) |> negate
   end
 
   def score_cat_fn_map do
@@ -94,14 +93,15 @@ defmodule Yahtzee do
       IO.puts "Invalid category: #{category}"
       pick_score(hand_score, game)
     else
-      if Keyword.get(game.score, category_key) == :open do
+      if Map.get(game, category_key) == :open do
         new_score = Keyword.get(hand_score, category_key)
         # note: use Keyword.update to keep ordering, instead of Keyword.put
         #updated_game_score = Keyword.put(game_score, category_key, new_score) |> score_upper_bonus
-        updated_game_score = Keyword.update!(game.score, category_key, fn _ -> new_score end) |> score_upper_bonus
-        updated_game_score = Keyword.update!(updated_game_score, :yahtzee_bonus,
+        updated_game = Map.update!(game, category_key, fn _ -> new_score end) |> score_upper_bonus
+        updated_game = Map.update!(updated_game, :yahtzee_bonus,
                                fn s -> s + Keyword.get(hand_score, :yahtzee_bonus, 0) end)
-        %{game | score: updated_game_score}
+        #%{game | score: updated_game_score}
+        updated_game
       else
         IO.puts("Category #{category} already played")
         pick_score(hand_score, game)
@@ -112,11 +112,11 @@ defmodule Yahtzee do
   def upper_score_categories, do: [:ones, :twos, :threes, :fours, :fives, :sixes]
   def upper_score_val_to_cat, do: 1..6 |> Enum.zip(Yahtzee.upper_score_categories) |> Enum.reduce(HashDict.new, fn {k,v}, dict -> Dict.put(dict, k, v) end)
 
-  def score_upper_bonus(game_score) do
-    upper_bonus = Keyword.take(game_score, upper_score_categories) |> sum_integer_values 
+  def score_upper_bonus(game) do
+    upper_bonus = Map.take(game, upper_score_categories) |> sum_integer_values 
     case upper_bonus >= 63 do
-      true  -> Keyword.update!(game_score, :upper_bonus, fn _ -> 35 end)
-      false -> game_score
+      true  -> Map.update!(game, :upper_bonus, fn _ -> 35 end)
+      false -> game
     end
   end
 
@@ -132,9 +132,9 @@ defmodule Yahtzee do
     kw |> Enum.reduce(0, fn {_key, val}, acc -> if is_integer(val), do: acc+val, else: acc end)
   end
   def get_total_score(game = %Yahtzee{}) do
-    game_score = Map.get(game, :score)
+    #game_score = Map.get(game, :score)
     #game_score |> Enum.reduce(0, fn {_key, val}, acc -> if is_integer(val), do: acc+val, else: acc end)
-    game_score |> sum_integer_values
+    game |> Map.to_list |> sum_integer_values
   end
 
   def print_hand_score(s) do
