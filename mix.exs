@@ -7,7 +7,8 @@ defmodule Yahtzee.Mixfile do
      elixir: "~> 1.0",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
-     deps: deps]
+     deps: deps,
+     test_coverage: [tool: Coverex.Task]]
   end
 
   # Configuration for the OTP application
@@ -28,6 +29,6 @@ defmodule Yahtzee.Mixfile do
   # Type `mix help deps` for more examples and options
   defp deps do
     #[ {:"elixir-random", git: "git://github.com/mururu/elixir-random"} ]
-    []
+    [ {:coverex, "~> 1.3.0", only: :test} ]
   end
 end

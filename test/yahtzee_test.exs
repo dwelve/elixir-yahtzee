@@ -1,5 +1,6 @@
 defmodule YahtzeeTest do
   use ExUnit.Case
+  import ExUnit.CaptureIO
 
   def assert_score(func, dice, expected) do
     assert func.(dice) == expected
@@ -157,5 +158,59 @@ defmodule YahtzeeTest do
     actual = Yahtzee.get_total_score(game)
     assert expected == actual
   end
+
+  test "negate helper function" do
+    assert Yahtzee.negate(true) == false
+    assert Yahtzee.negate(false) == true
+  end
+
+  test "end of game check" do
+    game = %Yahtzee{}
+    assert Yahtzee.check_end_of_game(game) == false
+
+    game = Map.from_struct(game) |> Map.keys |> Enum.reduce(%Yahtzee{}, fn key, map -> Map.put(map, key, 1) end)
+    assert Yahtzee.check_end_of_game(game) == true
+    
+    game = %{game | chance: :open}
+    assert Yahtzee.check_end_of_game(game) == false
+  end
+
+  test "filter which" do
+    input = "1 2, 3 blah 4 5 \n"
+    expected = [0, 1, 2, 3, 4]
+    actual = Yahtzee.filter_which(input)
+    assert expected == actual
+  end
+
+  test "roll dice all" do
+    dice = [:original, :original, :original, :original, :original]
+    actual = Yahtzee.roll(dice)
+    assert (Enum.count(dice)) == (Enum.count(actual))
+    check_original = Enum.filter(actual, &(&1 == :original))
+    original_count = Enum.count(check_original)
+    assert original_count == 0
+  end
+
+  test "roll dice" do
+    actual = Yahtzee.roll()
+    assert (Enum.count(actual)) != 0
+  end
+
+  test "roll dice some" do
+    dice = [:original, :original, :original, :original, :original]
+    which = [0, 2, 4]
+    actual = Yahtzee.roll(dice, which)
+    assert Enum.at(actual, 0) != :original
+    assert Enum.at(actual, 1) == :original
+    assert Enum.at(actual, 2) != :original
+    assert Enum.at(actual, 3) == :original
+    assert Enum.at(actual, 4) != :original
+  end
+
+  #test "ask which dice to roll" do
+  #  dice = [1, 2, 3, 4, 5]
+  #  capture_io([input:  "1 2, 3 blah 4 5 \n"],
+  #    Yahtzee.ask_which(dice) )
+  #end
 
 end

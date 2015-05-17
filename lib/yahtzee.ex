@@ -25,23 +25,11 @@ defmodule Yahtzee do
 
   def valid_score_categories, do: Keyword.keys(score_functions)
 
-  def max_scores do
-    # todo:: get rid of everything but full_house, straights, and yahtzee... 
-    # and change name to fixed_scores...
-    [ ones: 1*@num_dice,
-      twos: 2*@num_dice,
-      threes: 3*@num_dice,
-      fours: 4*@num_dice,
-      fives: 5*@num_dice,
-      sixes: 6*@num_dice,
-      three_of_kind: 6*@num_dice,
-      four_of_kind: 6*@num_dice,
-      full_house: 25,
+  def fixed_scores do
+    [ full_house: 25,
       small_straight: 30,
       large_straight: 40,
-      yahtzee: 50,
-      chance: 6*@num_dice
-    ] 
+      yahtzee: 50 ] 
   end
 
   def empty_dice, do: Stream.cycle([0]) |> Enum.take(@num_dice)
@@ -71,7 +59,7 @@ defmodule Yahtzee do
   end
 
   def negate(x), do: !x
-  def check_end_of_game(game = %Yahtzee{}) do
+  def check_end_of_game(game) do
     # if nil is present as score value, that scoring option has not been played yet
     game |> Map.values |> Enum.any?(&(&1 == :open)) |> negate
   end
@@ -143,16 +131,20 @@ defmodule Yahtzee do
 
   def ask_which(dice) do
     IO.puts "Dice are #{inspect dice}"
-    which = IO.gets "Roll which ones? "
-    which = which
-           |> String.split(~r/[\D]+/, trim: true)
-           |> Enum.map(&String.to_integer/1)
-           |> Enum.filter(&(&1 in all_dice_pos))
-           |> Enum.uniq
+    input = IO.gets "Roll which ones? "
+    which = filter_which(input)
     roll(dice, which)
   end
 
-  def roll(dice \\ empty_dice, which \\ all_dice_pos) do
+  def filter_which(input) do
+    input  |> String.split(~r/[\D]+/, trim: true)
+           |> Enum.map(&String.to_integer/1)
+           |> Enum.filter(&(&1 >= 1 and &1 <= @num_dice))
+           |> Enum.uniq
+           |> Enum.map(&(&1 - 1))
+  end
+
+  def roll(dice, which) do
     # if Enum.count(dice) != @num_dice, do: raise "Incorrect number of dice!"
     Stream.with_index(dice) 
     |> Stream.map(
@@ -164,6 +156,10 @@ defmodule Yahtzee do
         end
       end)
     |> Enum.to_list
+  end
+
+  def roll(dice \\ empty_dice) do
+    Enum.map(dice, fn _ -> :random.uniform(@sides) end)
   end
 
   def score(dice) do
@@ -191,7 +187,7 @@ defmodule Yahtzee do
              val_cat = Dict.fetch!(upper_score_val_to_cat, val)
              if Map.fetch!(game, val_cat) != :open do
                jokers = [:large_straight, :small_straight, :full_house]
-                        |> Enum.reduce([], fn cat, list -> [{cat, max_scores[cat]} | list] end)
+                        |> Enum.reduce([], fn cat, list -> [{cat, fixed_scores[cat]} | list] end)
                scores = Keyword.merge(scores, jokers, fn (_k, _v1, v2) -> v2 end)  # update with joker score
              end
            end
@@ -207,14 +203,14 @@ defmodule Yahtzee do
   def score_full_house(dice) do
     unique = dice |> Enum.uniq
     case unique  do
-      [a, _] -> if Enum.count(dice, &(&1 == a)) in [2,3], do: max_scores[:full_house], else: 0
+      [a, _] -> if Enum.count(dice, &(&1 == a)) in [2,3], do: fixed_scores[:full_house], else: 0
       _ -> 0
     end
   end
 
   def score_three_of_kind(dice), do: score_n_of_kind(dice, 3)
   def score_four_of_kind(dice), do: score_n_of_kind(dice, 4)
-  def score_yahtzee(dice), do: (if score_n_of_kind(dice, 5) != 0, do: max_scores[:yahtzee], else: 0)
+  def score_yahtzee(dice), do: (if score_n_of_kind(dice, 5) != 0, do: fixed_scores[:yahtzee], else: 0)
   
   def score_n_of_kind(dice, n) do
     1 .. @sides |> Enum.reduce(0, 
@@ -227,8 +223,8 @@ defmodule Yahtzee do
       end)
   end
 
-  def score_small_straight(dice), do: (if score_straight(dice, small_straights), do: max_scores[:small_straight], else: 0)
-  def score_large_straight(dice), do: (if score_straight(dice, large_straights), do: max_scores[:large_straight], else: 0)
+  def score_small_straight(dice), do: (if score_straight(dice, small_straights), do: fixed_scores[:small_straight], else: 0)
+  def score_large_straight(dice), do: (if score_straight(dice, large_straights), do: fixed_scores[:large_straight], else: 0)
 
   def small_straights, do: [[1,2,3,4],[2,3,4,5],[3,4,5,6]]
   def large_straights, do: [[1,2,3,4,5], [2,3,4,5,6]] 
